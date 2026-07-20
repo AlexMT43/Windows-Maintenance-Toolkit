@@ -1,5 +1,13 @@
 # Windows Maintenance Toolkit (WMT)
 
+<h2>Captura de pantalla</h2>
+
+<p align="center">
+  <img src="docs/images/wmt-menu.png"
+       alt="Menú principal de Windows Maintenance Toolkit"
+       width="750">
+</p>
+
 Herramienta modular de mantenimiento para Windows 10 y Windows 11, construida
 con PowerShell 5.1 y un lanzador `.cmd`.
 
