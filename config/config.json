@@ -1,0 +1,31 @@
+{
+  "Language": "es-ES",
+  "EnableLogging": true,
+  "LogRetentionDays": 30,
+  "EmptyFolderScan": {
+    "Mode": "FixedDrives",
+    "CustomRoots": [],
+    "ExcludePaths": [
+      "C:\\Windows",
+      "C:\\Program Files",
+      "C:\\Program Files (x86)",
+      "C:\\ProgramData",
+      "C:\\Users\\Default",
+      "C:\\Users\\Public",
+      "C:\\System Volume Information",
+      "C:\\Recovery",
+      "C:\\$Recycle.Bin"
+    ]
+  },
+  "Cleanup": {
+    "UserTemp": true,
+    "WindowsTemp": true,
+    "WindowsUpdateCache": true,
+    "RecycleBin": true,
+    "DismComponentCleanup": true
+  },
+  "Winget": {
+    "AcceptAgreements": true,
+    "IncludeUnknown": false
+  }
+}
