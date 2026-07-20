@@ -1,7 +1,5 @@
 # Windows Maintenance Toolkit (WMT)
 
-<h2>Captura de pantalla</h2>
-
 <p align="center">
   <img src="docs/images/wmt-menu.png"
        alt="Menú principal de Windows Maintenance Toolkit"
