@@ -1,0 +1,16 @@
+# Runtime logs
+logs/*
+!logs/.gitkeep
+
+# Local configuration overrides
+config/config.local.json
+
+# PowerShell temporary files
+*.tmp
+*.bak
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
