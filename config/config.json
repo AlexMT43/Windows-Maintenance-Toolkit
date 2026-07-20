@@ -4,6 +4,7 @@
   "LogRetentionDays": 30,
   "EmptyFolderScan": {
     "Mode": "FixedDrives",
+    "SkipCloudFiles": true,
     "CustomRoots": [],
     "ExcludePaths": [
       "C:\\Windows",

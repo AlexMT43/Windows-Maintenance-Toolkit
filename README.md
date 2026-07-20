@@ -1,11 +1,5 @@
 # Windows Maintenance Toolkit (WMT)
 
-<p align="center">
-  <img src="docs/images/wmt-menu.png"
-       alt="Menú principal de Windows Maintenance Toolkit"
-       width="750">
-</p>
-
 Herramienta modular de mantenimiento para Windows 10 y Windows 11, construida
 con PowerShell 5.1 y un lanzador `.cmd`.
 
@@ -61,8 +55,19 @@ La eliminación de carpetas vacías:
 
 - requiere escribir `ELIMINAR`;
 - omite enlaces simbólicos, puntos de unión y otros reparse points;
+- omite archivos y carpetas "solo en la nube" (Google Drive, OneDrive, Dropbox),
+  identificados por sus atributos de marcador (`OFFLINE`, `RECALL_ON_OPEN`,
+  `RECALL_ON_DATA_ACCESS`);
+- ignora las unidades virtuales de nube: solo analiza unidades fijas respaldadas
+  por un disco físico real;
+- excluye por defecto las carpetas de sincronización conocidas;
 - excluye rutas críticas configuradas;
-- analiza por defecto todas las unidades internas fijas.
+- analiza por defecto todas las unidades internas fijas reales.
+
+> **Aviso importante sobre la nube.** No borres nunca el contenido local de una
+> carpeta sincronizada con la nube: ese borrado se propaga y elimina los archivos
+> remotos. WMT evita tocar ese contenido, pero si dudas, desactiva la unidad de
+> sincronización antes de ejecutar la limpieza.
 
 Aun así, cualquier script ejecutado como administrador tiene riesgo. Revisa el
 código y mantén copias de seguridad de la información importante.

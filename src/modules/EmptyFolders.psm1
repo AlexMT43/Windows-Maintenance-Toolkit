@@ -5,9 +5,8 @@
         return @($Config.EmptyFolderScan.CustomRoots | Where-Object { Test-Path -LiteralPath $_ })
     }
 
-    return @(Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" |
-        Select-Object -ExpandProperty DeviceID |
-        ForEach-Object { "$_\" })
+    # Solo unidades físicas reales. Nunca unidades virtuales de nube (Google Drive, etc.).
+    return @(Get-WMTLocalFixedDriveRoots)
 }
 
 function Test-WMTExcludedPath {
@@ -51,6 +50,7 @@ function Invoke-WMTEmptyFolderRemoval {
     $roots | ForEach-Object { Write-Host " - $_" }
     Write-Host ""
     Write-Host "Se omitirán rutas críticas, enlaces simbólicos y puntos de unión." -ForegroundColor DarkYellow
+    Write-Host "No se tocan unidades de nube ni archivos solo en la nube (Drive, OneDrive)." -ForegroundColor DarkYellow
     Write-Host "El análisis completo de varias unidades puede tardar bastante." -ForegroundColor DarkYellow
 
     if ((Read-Host "Escribe ELIMINAR para continuar") -cne "ELIMINAR") {
@@ -60,9 +60,15 @@ function Invoke-WMTEmptyFolderRemoval {
         return
     }
 
-    $excluded = @($Config.EmptyFolderScan.ExcludePaths)
+    $skipCloud = $true
+    if ($null -ne $Config.EmptyFolderScan.PSObject.Properties['SkipCloudFiles']) {
+        $skipCloud = [bool]$Config.EmptyFolderScan.SkipCloudFiles
+    }
+
+    $excluded = @($Config.EmptyFolderScan.ExcludePaths) + @(Get-WMTCloudSyncExclusions)
     $removed = 0
     $failed = 0
+    $skipped = 0
 
     foreach ($root in $roots) {
         Write-Host ""
@@ -77,6 +83,15 @@ function Invoke-WMTEmptyFolderRemoval {
             Sort-Object { $_.FullName.Length } -Descending |
             ForEach-Object {
                 $dir = $_
+
+                # Salvaguarda crítica: nunca borrar marcadores de nube (Drive/OneDrive/Dropbox).
+                # Borrarlos sincroniza el borrado a la nube y destruye los datos reales.
+                if ($skipCloud -and (Test-WMTCloudPlaceholder -Item $dir)) {
+                    $skipped++
+                    Write-WMTLog -LogPath $LogPath -Level WARN -Message "Omitida (nube/placeholder): $($dir.FullName)"
+                    return
+                }
+
                 try {
                     if (@($dir.EnumerateFileSystemInfos()).Count -eq 0) {
                         Remove-Item -LiteralPath $dir.FullName -Force -ErrorAction Stop
@@ -95,6 +110,9 @@ function Invoke-WMTEmptyFolderRemoval {
 
     Write-Host ""
     Write-Host "$removed carpetas vacías eliminadas." -ForegroundColor Green
+    if ($skipped -gt 0) {
+        Write-Host "$skipped carpetas omitidas por protección de nube." -ForegroundColor Cyan
+    }
     if ($failed -gt 0) {
         Write-Host "$failed carpetas no pudieron procesarse." -ForegroundColor Yellow
     }

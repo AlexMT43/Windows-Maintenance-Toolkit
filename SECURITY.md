@@ -15,6 +15,9 @@ WMT avoids destructive operations by default:
 - `DISM /ResetBase` is not used.
 - Empty-folder deletion requires explicit confirmation.
 - Reparse points, symbolic links and junctions are skipped.
+- Cloud-only files and folders (Google Drive, OneDrive, Dropbox) are skipped, and
+  virtual cloud drives are never scanned, to avoid propagating deletions to the
+  cloud.
 - Critical Windows paths are excluded.
 
 Always review changes before running modified forks with administrator rights.

@@ -97,6 +97,89 @@ function Get-WMTFreeSpaceGB {
     }
 }
 
+# --- Protección frente a almacenamiento en la nube (Google Drive, OneDrive, Dropbox) ---
+#
+# Los archivos "solo en la nube" aparecen en disco como marcadores (placeholders)
+# que ocupan 0 bytes. Borrarlos, o borrar sus carpetas, SINCRONIZA el borrado a
+# la nube y elimina los datos reales. WMT nunca debe tocarlos.
+
+function Test-WMTCloudPlaceholder {
+    param([Parameter(Mandatory=$true)][System.IO.FileSystemInfo]$Item)
+
+    try {
+        $attr = [int64]$Item.Attributes
+    }
+    catch {
+        # Si no podemos leer los atributos, asumimos lo peor y no lo tocamos.
+        return $true
+    }
+
+    $FILE_ATTRIBUTE_REPARSE_POINT         = 0x400      # unión / enlace / marcador de nube
+    $FILE_ATTRIBUTE_OFFLINE               = 0x1000     # contenido no residente localmente
+    $FILE_ATTRIBUTE_RECALL_ON_OPEN        = 0x40000    # placeholder OneDrive/Drive
+    $FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS = 0x400000   # archivo bajo demanda
+
+    if ($attr -band $FILE_ATTRIBUTE_REPARSE_POINT)         { return $true }
+    if ($attr -band $FILE_ATTRIBUTE_OFFLINE)               { return $true }
+    if ($attr -band $FILE_ATTRIBUTE_RECALL_ON_OPEN)        { return $true }
+    if ($attr -band $FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS) { return $true }
+
+    return $false
+}
+
+function Get-WMTLocalFixedDriveRoots {
+    # Devuelve solo unidades fijas respaldadas por un disco físico real.
+    # Las unidades virtuales de nube (p. ej. G:\ de Google Drive) no tienen
+    # partición asociada y quedan excluidas, aunque el sistema las declare "fijas".
+
+    $letters = New-Object System.Collections.Generic.List[string]
+
+    try {
+        $partitions = Get-CimInstance Win32_DiskPartition -ErrorAction Stop
+        foreach ($partition in $partitions) {
+            Get-CimAssociatedInstance -InputObject $partition -ResultClassName Win32_LogicalDisk -ErrorAction SilentlyContinue |
+                Where-Object { $_.DriveType -eq 3 } |
+                ForEach-Object { if (-not $letters.Contains($_.DeviceID)) { $letters.Add($_.DeviceID) } }
+        }
+    }
+    catch {
+        # Silencioso: pasamos al respaldo.
+    }
+
+    if ($letters.Count -eq 0) {
+        # Respaldo: unidades fijas con sistema de archivos local estándar.
+        Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FileSystem -in @("NTFS", "ReFS", "exFAT", "FAT32", "FAT") } |
+            ForEach-Object { if (-not $letters.Contains($_.DeviceID)) { $letters.Add($_.DeviceID) } }
+    }
+
+    return @($letters | Sort-Object | ForEach-Object { "$_\" })
+}
+
+function Get-WMTCloudSyncExclusions {
+    # Carpetas de sincronización conocidas que reflejan contenido de nube.
+    $paths = New-Object System.Collections.Generic.List[string]
+
+    $candidates = @(
+        $env:OneDrive,
+        $env:OneDriveConsumer,
+        $env:OneDriveCommercial,
+        (Join-Path $env:USERPROFILE "OneDrive"),
+        (Join-Path $env:USERPROFILE "Google Drive"),
+        (Join-Path $env:USERPROFILE "Dropbox"),
+        (Join-Path $env:LOCALAPPDATA "Google\DriveFS"),
+        (Join-Path $env:LOCALAPPDATA "Microsoft\OneDrive")
+    )
+
+    foreach ($c in $candidates) {
+        if (-not [string]::IsNullOrWhiteSpace($c) -and -not $paths.Contains($c)) {
+            $paths.Add($c)
+        }
+    }
+
+    return @($paths)
+}
+
 function Invoke-WMTSafeChildCleanup {
     param(
         [Parameter(Mandatory=$true)][string]$Path,
@@ -113,6 +196,10 @@ function Invoke-WMTSafeChildCleanup {
 
     Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue | ForEach-Object {
         $item = $_
+        if (Test-WMTCloudPlaceholder -Item $item) {
+            Write-WMTLog -LogPath $LogPath -Level WARN -Message "Omitido (nube/placeholder): $($item.FullName)"
+            return
+        }
         try {
             Remove-Item -LiteralPath $item.FullName -Recurse -Force -ErrorAction Stop
         }

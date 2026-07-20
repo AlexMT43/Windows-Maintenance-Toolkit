@@ -37,7 +37,7 @@ Import-Module (Join-Path $moduleRoot "Reports.psm1") -Force
 do {
     Clear-Host
     Write-Host "================================================" -ForegroundColor DarkCyan
-    Write-Host "        WINDOWS MAINTENANCE TOOLKIT v1.0" -ForegroundColor Cyan
+    Write-Host "        WINDOWS MAINTENANCE TOOLKIT v1.0.1" -ForegroundColor Cyan
     Write-Host "================================================" -ForegroundColor DarkCyan
     Write-Host ""
     Write-Host " 1. Actualizar aplicaciones con WinGet"
